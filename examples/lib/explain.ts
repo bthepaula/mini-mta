@@ -9,7 +9,7 @@ export const explaining = process.env.EXPLAIN !== '0';
 
 // In a terminal the explanation is dimmed (ANSI "dim"), so the technical line stands out
 const dimmed = process.stdout.isTTY && !process.env.NO_COLOR;
-const dim = (s: string) => (dimmed ? `\x1b[2m${s}\x1b[22m` : s);
+const dim = (text: string) => (dimmed ? `\x1b[2m${text}\x1b[22m` : text);
 
 /** Prints the explanation below the previous line (or nothing, with EXPLAIN=0). */
 export function explain(text: string | null | undefined, indent = '   '): void {
@@ -46,17 +46,17 @@ const REPLY_CLASSES: Record<number, { meaning: string; then?: string }> = {
 export const REPLY_CODES = (): string[] => [
   '',
   'The secret of the numbers: the doorman always starts with a number, and the FIRST digit tells you everything:',
-  ...Object.entries(REPLY_CLASSES).map(([digit, c]) => `   ${digit}xx "${c.meaning}"${c.then ? ` (${c.then})` : ''}`),
+  ...Object.entries(REPLY_CLASSES).map(([digit, replyClass]) => `   ${digit}xx "${replyClass.meaning}"${replyClass.then ? ` (${replyClass.then})` : ''}`),
 ];
 
 /** What the first digit of a reply code means. */
 export function codeClass(code: number): string {
   const digit = Math.floor(code / 100);
-  const c = REPLY_CLASSES[digit];
-  return c ? `${digit} = ${c.meaning}` : `code ${code}`;
+  const replyClass = REPLY_CLASSES[digit];
+  return replyClass ? `${digit} = ${replyClass.meaning}` : `code ${code}`;
 }
 
-const num = (n: number) => n.toLocaleString('en-US');
+const num = (value: number) => value.toLocaleString('en-US');
 
 // ------------------------------------------------------------------ the SMTP conversation (C: and S: lines)
 
@@ -66,19 +66,19 @@ export function explainSmtp(dir: 'C' | 'S', line: string): string {
 }
 
 // Each rule: if the command matches the regex, the function turns the match into the explanation. The first match wins.
-type Rule = [RegExp, (m: RegExpExecArray) => string];
+type Rule = [RegExp, (match: RegExpExecArray) => string];
 
 const COMMANDS: Rule[] = [
-  [/^EHLO (.+)$/i, (m) => `"Hi! I'm the mail carrier from ${m[1]}." (EHLO = the new way to say hello)`],
-  [/^HELO (.+)$/i, (m) => `"Hi! I'm ${m[1]}." (HELO is the old hello: the doorman won't list what he can do)`],
+  [/^EHLO (.+)$/i, (match) => `"Hi! I'm the mail carrier from ${match[1]}." (EHLO = the new way to say hello)`],
+  [/^HELO (.+)$/i, (match) => `"Hi! I'm ${match[1]}." (HELO is the old hello: the doorman won't list what he can do)`],
   [/^AUTH /i, () => 'The mail carrier shows his badge (username and password) to prove he is a customer of this post office'],
-  [/^MAIL FROM:<(.*)>/i, (m) => m[1]
-    ? `"This letter is from ${m[1]}. If you can't deliver it, send it back there." (the return address, on the ENVELOPE)`
+  [/^MAIL FROM:<(.*)>/i, (match) => match[1]
+    ? `"This letter is from ${match[1]}. If you can't deliver it, send it back there." (the return address, on the ENVELOPE)`
     : '"This letter has no sender." (it is a bounce notice: if it fails, it goes back to nobody)'],
-  [/^RCPT TO:<(.*)>/i, (m) => `"The letter is for ${m[1]}." (one RCPT for each person)`],
+  [/^RCPT TO:<(.*)>/i, (match) => `"The letter is for ${match[1]}." (one RCPT for each person)`],
   [/^DATA$/i, () => '"Here comes the letter!"'],
-  [/^\[(\d+) bytes of message\]$/, (m) =>
-    `The mail carrier hands over the whole letter (${num(Number(m[1]))} little letters) and, at the end, shows a line with just one dot: "done!"`],
+  [/^\[(\d+) bytes of message\]$/, (match) =>
+    `The mail carrier hands over the whole letter (${num(Number(match[1]))} little letters) and, at the end, shows a line with just one dot: "done!"`],
   [/^QUIT$/i, () => '"Bye!"'],
   [/^RSET$/i, () => '"Forget that letter, I\'m starting a new one."'],
   [/^NOOP$/i, () => '"Are you still there?"'],
@@ -87,8 +87,8 @@ const COMMANDS: Rule[] = [
 
 function explainCommand(line: string): string {
   for (const [regex, say] of COMMANDS) {
-    const m = regex.exec(line);
-    if (m) return say(m);
+    const match = regex.exec(line);
+    if (match) return say(match);
   }
   return 'The mail carrier says a command';
 }
@@ -126,8 +126,8 @@ function explainReply(line: string): string {
     case 530: return `"Show me your badge first!" (${codeClass(code)}: AUTH is missing)`;
     case 535: return `"That badge is wrong." (${codeClass(code)})`;
     case 550: {
-      const m = /^5\.1\.1 <(.+)>/.exec(text);
-      if (m) return `"Nobody called ${m[1]} lives here." (${codeClass(code)}; the 5.1.1 explains: "that address doesn't exist")`;
+      const match = /^5\.1\.1 <(.+)>/.exec(text);
+      if (match) return `"Nobody called ${match[1]} lives here." (${codeClass(code)}; the 5.1.1 explains: "that address doesn't exist")`;
       if (text.includes('Relaying denied')) {
         return `"I only take letters for people who live in THIS building. That one is for another building!" (${codeClass(code)})`;
       }
@@ -142,9 +142,9 @@ function explainReply(line: string): string {
 
 /** The 250 replies: the EHLO greeting and its list of extensions, the OKs for MAIL/RCPT/DATA, or a plain "all good". */
 function explainOk(text: string, more: boolean): string {
-  let m: RegExpExecArray | null;
-  if ((m = /^\S+ hello (.+)$/.exec(text))) {
-    return `"Hi, ${m[1]}! Let me tell you what I can do:" (the "-" after 250 means "wait, there's more")`;
+  let match: RegExpExecArray | null;
+  if ((match = /^\S+ hello (.+)$/.exec(text))) {
+    return `"Hi, ${match[1]}! Let me tell you what I can do:" (the "-" after 250 means "wait, there's more")`;
   }
   // lines of the EHLO extension list: "250-SIZE 1000000", "250 ENHANCEDSTATUSCODES"...
   const space = text.indexOf(' ');
@@ -154,9 +154,9 @@ function explainOk(text: string, more: boolean): string {
     const end = more ? '' : ' (the space after 250 means "I\'m done talking")';
     return ((known && EXTENSIONS[keyword](arg)) || '"Hello!"') + end;
   }
-  if ((m = /^2\.1\.0 Sender <(.*)> OK/.exec(text))) return `"Got it: if something goes wrong, I'll send it back to ${m[1] || 'nobody'}."`;
-  if ((m = /^2\.1\.5 Recipient <(.+)> OK/.exec(text))) return `"${m[1]} lives here!"`;
-  if ((m = /^2\.0\.0 Ok: queued as (\S+)/.exec(text))) return `"Got it! I saved it as number ${m[1]}. Getting it to the person is MY job now."`;
+  if ((match = /^2\.1\.0 Sender <(.*)> OK/.exec(text))) return `"Got it: if something goes wrong, I'll send it back to ${match[1] || 'nobody'}."`;
+  if ((match = /^2\.1\.5 Recipient <(.+)> OK/.exec(text))) return `"${match[1]} lives here!"`;
+  if ((match = /^2\.0\.0 Ok: queued as (\S+)/.exec(text))) return `"Got it! I saved it as number ${match[1]}. Getting it to the person is MY job now."`;
   return '"All good."';
 }
 
@@ -170,15 +170,15 @@ export function showSmtp(line: string): void {
 
 /** Explains a "Name: value" header (the name may come in lowercase). */
 export function explainHeader(name: string, value: string): string | null {
-  const v = value.trim();
-  const disguised = /=\?UTF-8\?B\?/i.test(v);
+  const trimmed = value.trim();
+  const disguised = /=\?UTF-8\?B\?/i.test(trimmed);
   switch (name.toLowerCase()) {
     case 'return-path':
       return 'the RETURN address that was on the envelope (MAIL FROM). The doorman copied it here on delivery so it doesn\'t get lost';
     case 'received': {
-      const m = /from (\S+) by (\S+)/.exec(v);
-      return m
-        ? `a post office "stamp": ${m[1]} handed it to ${m[2]}. Each stop puts its stamp ON TOP of the others`
+      const match = /from (\S+) by (\S+)/.exec(trimmed);
+      return match
+        ? `a post office "stamp": ${match[1]} handed it to ${match[2]}. Each stop puts its stamp ON TOP of the others`
         : 'a "stamp" from a post office the letter went through';
     }
     case 'from':
@@ -196,21 +196,21 @@ export function explainHeader(name: string, value: string): string | null {
       return 'an extra header (made-up ones start with X-). Resend uses this one so Gmail doesn\'t group similar emails into one thread';
     case 'mime-version': return 'says: "this letter follows the MIME rules", which allow accents, HTML and attachments';
     case 'content-type': {
-      if (v.startsWith('multipart/mixed')) {
+      if (trimmed.startsWith('multipart/mixed')) {
         return 'the letter is a BOX with different things inside (the text and the attachments). The boundary is the "dotted line" between each thing';
       }
-      if (v.startsWith('multipart/alternative')) {
+      if (trimmed.startsWith('multipart/alternative')) {
         return 'inside the box: the SAME letter written two ways (plain and fancy). The app shows the prettiest one it can';
       }
-      if (v.startsWith('text/plain')) return 'this part is plain text, no decoration. charset=utf-8 says which "alphabet" was used';
-      if (v.startsWith('text/html')) return 'this part is HTML: the same text, decorated with bold, colors and paragraphs';
-      const type = v.split(';')[0];
-      const fileName = /name="([^"]+)"/.exec(v)?.[1];
+      if (trimmed.startsWith('text/plain')) return 'this part is plain text, no decoration. charset=utf-8 says which "alphabet" was used';
+      if (trimmed.startsWith('text/html')) return 'this part is HTML: the same text, decorated with bold, colors and paragraphs';
+      const type = trimmed.split(';')[0];
+      const fileName = /name="([^"]+)"/.exec(trimmed)?.[1];
       return `this part is a file of type ${type}${fileName ? `, called ${fileName}` : ''}`;
     }
     case 'content-transfer-encoding':
-      if (v === 'quoted-printable') return 'the text goes almost as is; only special letters become =XX ("é" becomes =C3=A9)';
-      if (v === 'base64') return 'the file was "translated" into safe letters and numbers so the mail doesn\'t break it';
+      if (trimmed === 'quoted-printable') return 'the text goes almost as is; only special letters become =XX ("é" becomes =C3=A9)';
+      if (trimmed === 'base64') return 'the file was "translated" into safe letters and numbers so the mail doesn\'t break it';
       return null;
     case 'content-disposition': return 'this is an ATTACHMENT: it shows up with the paperclip, not in the middle of the text';
     default: return null;
@@ -230,26 +230,26 @@ export function explainMessage(raw: string): Array<[string, string | null]> {
   let inHeader = true;
 
   for (const line of raw.replace(/\r\n$/, '').split('\r\n')) {
-    let exp: string | null = null;
-    const h = /^([A-Za-z][A-Za-z0-9-]*): (.*)$/.exec(line);
+    let explanation: string | null = null;
+    const header = /^([A-Za-z][A-Za-z0-9-]*): (.*)$/.exec(line);
     if (/^--\S+--$/.test(line)) {
-      exp = once('end-boundary', 'the dotted line with "--" at the END: no more parts in this box');
+      explanation = once('end-boundary', 'the dotted line with "--" at the END: no more parts in this box');
       inHeader = false;
     } else if (/^--\S+$/.test(line)) {
-      exp = once('boundary', 'the "dotted line" (boundary): a new part of the box starts here');
+      explanation = once('boundary', 'the "dotted line" (boundary): a new part of the box starts here');
       inHeader = true;
     } else if (line === '') {
-      exp = inHeader ? once('blank', '(empty line) separates the headers from the filling: from here down is the content') : null;
+      explanation = inHeader ? once('blank', '(empty line) separates the headers from the filling: from here down is the content') : null;
       inHeader = false;
-    } else if (inHeader && h) {
-      const text = explainHeader(h[1], h[2]);
-      exp = text ? once(`${h[1].toLowerCase()}:${text}`, text) : null;
+    } else if (inHeader && header) {
+      const text = explainHeader(header[1], header[2]);
+      explanation = text ? once(`${header[1].toLowerCase()}:${text}`, text) : null;
     } else if (line.startsWith('.')) {
-      exp = once('dot', 'this line starts with a dot. The mail carrier had DOUBLED the dot (..) so the doorman wouldn\'t think it was the end; the doorman removed the extra dot');
+      explanation = once('dot', 'this line starts with a dot. The mail carrier had DOUBLED the dot (..) so the doorman wouldn\'t think it was the end; the doorman removed the extra dot');
     } else if (!inHeader) {
-      exp = explainBodyLine(line, once);
+      explanation = explainBodyLine(line, once);
     }
-    out.push([line, exp]);
+    out.push([line, explanation]);
   }
   return out;
 }
@@ -277,5 +277,5 @@ function explainBodyLine(line: string, once: Once): string | null {
 
 /** Prints the raw message with the explanation below each important line. */
 export function showMessage(raw: string, indent = ''): void {
-  for (const [line, exp] of explainMessage(raw)) show(indent + line, exp, indent + '   ');
+  for (const [line, explanation] of explainMessage(raw)) show(indent + line, explanation, indent + '   ');
 }
