@@ -9,8 +9,10 @@
     "node": ">=20"
   },
   "scripts": {
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "check-env": "tsx scripts/check-env.ts"
+    "check-env": "tsx scripts/check-env.ts",
+    "conversation": "tsx examples/1-conversation.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
