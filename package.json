@@ -16,7 +16,8 @@
     "send": "tsx examples/2-send.ts",
     "compose": "tsx examples/3-compose.ts",
     "read": "tsx examples/4-read.ts",
-    "routes": "tsx examples/5-routes.ts"
+    "routes": "tsx examples/5-routes.ts",
+    "delivery": "tsx examples/6-delivery.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
