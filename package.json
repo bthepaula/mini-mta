@@ -1,0 +1,22 @@
+{
+  "name": "mini-mta",
+  "version": "1.0.0",
+  "description": "A tiny mail transfer agent in TypeScript: SMTP server and client, MIME builder and parser, and MX-based delivery, built from scratch on node:net and node:dns.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "check-env": "tsx scripts/check-env.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "nodemailer": "^10.1.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}
