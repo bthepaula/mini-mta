@@ -12,7 +12,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "check-env": "tsx scripts/check-env.ts",
-    "conversation": "tsx examples/1-conversation.ts"
+    "conversation": "tsx examples/1-conversation.ts",
+    "send": "tsx examples/2-send.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
